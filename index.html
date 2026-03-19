@@ -838,7 +838,7 @@ function opslaanFactuur(verzenden){
   }
 
   // Sync naar Google Sheets
-  slaFactuurOpInSheets(factuur);
+  backupNaarSheets(factuur);
   setStatusUI(status);
   renderOverzicht();
   if(verzenden) toast('✓ Factuur opgeslagen als Verzonden — '+ factuur.nummer);
