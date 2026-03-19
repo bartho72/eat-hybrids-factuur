@@ -562,17 +562,15 @@ function syncFactuurNaarSheets(factuur){
   toonSyncStatus('⟳ Opslaan in Google Sheets...', 'var(--amber)');
 
   // Stuur data via URL parameter (GET) — werkt altijd vanuit lokale bestanden
-  const encoded = encodeURIComponent(JSON.stringify({action:'save', factuur}));
-  jsonpRequest(SCRIPT_URL + '?data=' + encoded, function(err, data){
-    if(err || !data){
-      toonSyncStatus('⚠ Lokaal opgeslagen — sync mislukt', 'var(--amber)');
-      return;
-    }
-    if(data.ok){
-      toonSyncStatus('✓ Opgeslagen in Google Sheets', 'var(--green-mid)');
-      setTimeout(()=>{ const el=document.getElementById('sync-status'); if(el) el.style.display='none'; }, 3000);
-    }
-  });
+// Gebruik onze nieuwe backup motor
+backupNaarSheets(factuur);
+    
+    // Optioneel: toon direct dat het lokaal alvast is gelukt
+    toonSyncStatus('✓ Lokaal opgeslagen - backup gestart', 'var(--green-mid)');
+    setTimeout(() => { 
+        const el = document.getElementById('sync-status');
+        if(el) el.style.display = 'none'; 
+    }, 3000);
 }
 
 function verwijderUitSheets(id){
@@ -1321,6 +1319,32 @@ function checkLogin(){
 document.getElementById('topbar-date').textContent = new Date().toLocaleDateString('nl-NL',{day:'numeric',month:'long',year:'numeric'});
 // Controleer login eerst
 if(checkLogin()){ laadFacturenVanSheets(); }
+// --- NIEUWE CODE VANAF REGEL 1324 ---
+const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwUZj0ypR2Ex2okzMH_TNIIRYcvlg_xNoyXiR9XGVMBiKXZLM0by04GNraooHANer0gnA/exec";
+
+function backupNaarSheets(factuurData) {
+    console.log("Factuur wordt naar Google Sheets verzonden...");
+    
+    // We maken de data klaar voor verzending
+    const payload = {
+        action: 'save',
+        factuur: factuurData
+    };
+
+    // Gebruik JSONP om de backup te maken (voorkomt beveiligingsfouten in de browser)
+    const script = document.createElement('script');
+    script.src = `${GOOGLE_SCRIPT_URL}?callback=backupSucces&data=${encodeURIComponent(JSON.stringify(payload))}`;
+    document.body.appendChild(script);
+}
+
+function backupSucces(response) {
+    if (response.ok) {
+        console.log("✅ Backup geslaagd!");
+    } else {
+        console.error("❌ Backup mislukt: ", response.error);
+    }
+}
+// --- EINDE NIEUWE CODE ---
 </script><datalist id="producten-list"><option value="Hybride Hamburger Classic"></option><option value="Hybride Hamburger Spicy"></option><option value="Hybride Meatball"></option><option value="Hybride MincedMeat"></option><option value="Verpakkingsmateriaal"></option><option value="Levering"></option><option value="Overig"></option></datalist><datalist id="producten-list"><option value="Hybride Hamburger Classic"></option><option value="Hybride Hamburger Spicy"></option><option value="Hybride Meatball"></option><option value="Hybride MincedMeat"></option><option value="Verpakkingsmateriaal"></option><option value="Levering"></option><option value="Overig"></option></datalist><datalist id="producten-list"><option value="Hybride Hamburger Classic"></option><option value="Hybride Hamburger Spicy"></option><option value="Hybride Meatball"></option><option value="Hybride MincedMeat"></option><option value="Verpakkingsmateriaal"></option><option value="Levering"></option><option value="Overig"></option></datalist>
 
 
