@@ -1329,7 +1329,7 @@ document.getElementById('topbar-date').textContent = new Date().toLocaleDateStri
 // Controleer login eerst
 if(checkLogin()){ laadFacturenVanSheets(); }
 // --- NIEUWE CODE VANAF REGEL 1324 ---
-const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwUZj0ypR2Ex2okzMH_TNIIRYcvlg_xNoyXiR9XGVMBiKXZLM0by04GNraooHANer0gnA/exec";
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwUZj0ypR2Ex2okzMH_TNIIRYcvlg_xNoyXiR9XGVMBiKXZLM0by04GNraooHANer0gnA/exec";
 
 function backupNaarSheets(factuurData) {
     console.log("Factuur wordt naar Google Sheets verzonden...");
@@ -1342,7 +1342,7 @@ function backupNaarSheets(factuurData) {
 
     // Gebruik JSONP om de backup te maken (voorkomt beveiligingsfouten in de browser)
     const script = document.createElement('script');
-    script.src = `${GOOGLE_SCRIPT_URL}?callback=backupSucces&data=${encodeURIComponent(JSON.stringify(payload))}`;
+    script.src = `${SCRIPT_URL}?callback=backupSucces&data=${encodeURIComponent(JSON.stringify(payload))}`;
     document.body.appendChild(script);
 }
 
