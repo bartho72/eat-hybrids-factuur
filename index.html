@@ -580,7 +580,7 @@ function verwijderUitSheets(id){
     // 2. Geef opdracht aan de backup motor om de rij in Google Sheets te wissen
     const payload = { action: 'delete', id: id };
     const script = document.createElement('script');
-    script.src = `${GOOGLE_SCRIPT_URL}?callback=backupSucces&data=${encodeURIComponent(JSON.stringify(payload))}`;
+    script.src = `${SCRIPT_URL}?callback=backupSucces&data=${encodeURIComponent(JSON.stringify(payload))}`;
     document.body.appendChild(script);
 
     console.log("Opdracht verstuurd om factuur " + id + " te verwijderen uit Sheets.");
