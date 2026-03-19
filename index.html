@@ -572,14 +572,23 @@ backupNaarSheets(factuur);
         if(el) el.style.display = 'none'; 
     }, 3000);
 }
-
 function verwijderUitSheets(id){
-  try{
-    const backup = JSON.parse(localStorage.getItem('eh_facturen_backup')||'[]');
-    localStorage.setItem('eh_facturen_backup', JSON.stringify(backup.filter(f=>f.id!==id)));
-  }catch{}
-  const encoded = encodeURIComponent(JSON.stringify({action:'delete', id}));
-  jsonpRequest(SCRIPT_URL + '?data=' + encoded, function(){});
+    // 1. Verwijder eerst lokaal uit de browser backup
+    try {
+        const backup = JSON.parse(localStorage.getItem('eh_facturen_backup')||'[]');
+        localStorage.setItem('eh_facturen_backup', JSON.stringify(backup.filter(f=>f.id!==id)));
+    } catch(e) {}
+
+    // 2. Geef opdracht aan de backup motor om de rij in Google Sheets te wissen
+    const payload = { action: 'delete', id: id };
+    const script = document.createElement('script');
+    script.src = `${GOOGLE_SCRIPT_URL}?callback=backupSucces&data=${encodeURIComponent(JSON.stringify(payload))}`;
+    document.body.appendChild(script);
+
+    console.log("Opdracht verstuurd om factuur " + id + " te verwijderen uit Sheets.");
+    
+    // UI direct bijwerken zodat de factuur uit de lijst verdwijnt
+    if(typeof renderOverzicht === 'function') renderOverzicht();
 }
 
 // ══════════════════════════════════════════════════════════════
