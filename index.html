@@ -562,7 +562,7 @@ function laadFacturenVanSheets(){
   });
 }
 
-function syncFactuurNaarSheets(factuur){
+function syncFactuurNaarSheets(factuur, stuurMail){
   // Altijd lokaal backuppen
   try{
     const backup = JSON.parse(localStorage.getItem('eh_facturen_backup')||'[]');
@@ -574,7 +574,8 @@ function syncFactuurNaarSheets(factuur){
   toonSyncStatus('⟳ Opslaan in Google Sheets...', 'var(--amber)');
 
   // Stuur data via URL parameter (GET) — werkt altijd vanuit lokale bestanden
-  const encoded = encodeURIComponent(JSON.stringify({action:'save', factuur}));
+  const payload = {action:'save', factuur, stuurMail: !!stuurMail};
+  const encoded = encodeURIComponent(JSON.stringify(payload));
   jsonpRequest(SCRIPT_URL + '?data=' + encoded, function(err, data){
     if(err || !data){
       toonSyncStatus('⚠ Lokaal opgeslagen — sync mislukt', 'var(--amber)');
@@ -842,8 +843,8 @@ function opslaanFactuur(verzenden){
     toast('✓ Factuur opgeslagen — '+ factuur.nummer);
   }
 
-  // Sync naar Google Sheets
-  syncFactuurNaarSheets(factuur);
+  // Sync naar Google Sheets (+ backup mail als verzonden)
+  syncFactuurNaarSheets(factuur, verzenden);
   setStatusUI(status);
   renderOverzicht();
   if(verzenden) toast('✓ Factuur opgeslagen als Verzonden — '+ factuur.nummer);
