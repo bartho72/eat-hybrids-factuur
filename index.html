@@ -508,7 +508,7 @@ tbody tr:last-child td{border-bottom:none;}
 // ══════════════════════════════════════════════════════════════
 // GOOGLE SHEETS SYNC
 // ══════════════════════════════════════════════════════════════
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwsre5Opk6PCluSBtz5auj4GhWmtGmB7Pqb-YmZwaAoHN9_-QOw81cs_Pbk-0voQg4I5Q/exec';
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwsre5Opk6PCluSBtz5auj4GhWmtGmB7Pqb-YmZwaAoHN9_-QOw81cs_Pbk-0voQg4l5Q/exec';
 
 function toonSyncStatus(msg, kleur='var(--amber)'){
   const el = document.getElementById('sync-status');
@@ -547,7 +547,13 @@ function laadFacturenVanSheets(){
       return;
     }
     if(data.facturen){
-      facturen = data.facturen.filter(f=>f.id);
+      // Herstel oud formaat: als 'nummer' een JSON-string is, gebruik die als volledige factuur
+      facturen = data.facturen.map(function(f){
+        if(f.nummer && typeof f.nummer === 'string' && f.nummer.trim().startsWith('{')) {
+          try { return JSON.parse(f.nummer); } catch {}
+        }
+        return f;
+      }).filter(f=>f.id);
       try{ localStorage.setItem('eh_facturen_backup', JSON.stringify(facturen)); }catch{}
       toonSyncStatus('✓ Gesynchroniseerd met Google Sheets', 'var(--green-mid)');
       setTimeout(()=>{ const el=document.getElementById('sync-status'); if(el) el.style.display='none'; }, 3000);
