@@ -498,7 +498,7 @@ tbody tr:last-child td{border-bottom:none;}
 <div id="toast"></div>
 
 <script>
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwUZj0ypR2Ex2okzMH_TNIIRYcvlg_xNoyXiR9XGVMBiKXZLM0by04GNraooHANer0gnA/exec";
+var SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwUZj0ypR2Ex2okzMH_TNIIRYcvlg_xNoyXiR9XGVMBIKXZLM0by04GNraooHANer0gnA/exec";
 // ══════════════════════════════════════════════════════════════
 
 
@@ -1325,7 +1325,11 @@ function checkLogin(){
 
 document.getElementById('topbar-date').textContent = new Date().toLocaleDateString('nl-NL',{day:'numeric',month:'long',year:'numeric'});
 // Controleer login eerst
-if(checkLogin()){ laadFacturenVanSheets(); }
+if(checkLogin()){ 
+    setTimeout(() => {
+        laadFacturenVanSheets(); 
+    }, 500); 
+}
 // --- NIEUWE CODE VANAF REGEL 1324 ---
 
 
