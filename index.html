@@ -498,7 +498,7 @@ tbody tr:last-child td{border-bottom:none;}
 <div id="toast"></div>
 
 <script>
-
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwUZj0ypR2Ex2okzMH_TNIIRYcvlg_xNoyXiR9XGVMBiKXZLM0by04GNraooHANer0gnA/exec";
 // ══════════════════════════════════════════════════════════════
 
 
@@ -1327,7 +1327,7 @@ document.getElementById('topbar-date').textContent = new Date().toLocaleDateStri
 // Controleer login eerst
 if(checkLogin()){ laadFacturenVanSheets(); }
 // --- NIEUWE CODE VANAF REGEL 1324 ---
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwUZj0ypR2Ex2okzMH_TNIIRYcvlg_xNoyXiR9XGVMBiKXZLM0by04GNraooHANer0gnA/exec";
+
 
 function backupNaarSheets(factuurData) {
     console.log("Factuur wordt naar Google Sheets verzonden...");
