@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<!-- saved from url=(0045)file:///C:/Users/Admin/Downloads/index_4.html -->
+<!-- saved from url=(0045)file:///C:/Users/Admin/Downloads/index_5.html -->
 <html lang="nl"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Eat Hybrids — Facturatie</title>
-<link href="./index_files/css2" rel="stylesheet">
+<link href="file:///C:/Users/Admin/Downloads/index_files/css2" rel="stylesheet">
 <style>
 :root {
   --green:#2D5016;--green-mid:#4A7C2F;--green-light:#7AB648;
@@ -226,6 +226,10 @@ tbody tr:last-child td{border-bottom:none;}
   <div class="nav-item" onclick="nieuweFactuur()" id="nav-nieuw"><span class="icon">✏️</span> Nieuwe factuur</div>
   <div class="nav-section">Instellingen</div>
   <div class="nav-item" onclick="switchTab(&#39;instellingen&#39;)" id="nav-instellingen"><span class="icon">⚙️</span> Bedrijfsinstellingen</div>
+  <div class="nav-section">Backup</div>
+  <div class="nav-item" onclick="exporteerBackup()" title="Download alle facturen als JSON bestand"><span class="icon">⬇️</span> Backup downloaden</div>
+  <div class="nav-item" onclick="document.getElementById(&#39;import-backup-input&#39;).click()" title="Herstel facturen vanuit backup bestand"><span class="icon">⬆️</span> Backup herstellen</div>
+  <input type="file" id="import-backup-input" accept=".json" style="display:none" onchange="importeerBackup(this)">
   <div class="sidebar-footer">Eat Hybrids Facturatie v1.0</div>
 </nav>
 
@@ -373,12 +377,13 @@ tbody tr:last-child td{border-bottom:none;}
                 <table class="regels-table" id="regels-table">
                   <thead>
                     <tr>
-                      <th style="width:35%;">Omschrijving</th>
-                      <th style="width:10%;">Aantal</th>
-                      <th style="width:12%;">Eenheid</th>
-                      <th style="width:15%;">Stukprijs (€)</th>
-                      <th style="width:10%;">BTW %</th>
-                      <th style="width:14%;text-align:right;">Totaal (€)</th>
+                      <th style="width:33%;">Omschrijving</th>
+                      <th style="width:8%;">Aantal</th>
+                      <th style="width:10%;">Eenheid</th>
+                      <th style="width:12%;">Stukprijs (€)</th>
+                      <th style="width:9%;">Excl/Incl</th>
+                      <th style="width:9%;">BTW %</th>
+                      <th style="width:13%;text-align:right;">Totaal excl. (€)</th>
                       <th class="regel-del"></th>
                     </tr>
                   </thead>
@@ -875,7 +880,14 @@ function renderRegels(){
     tbody.innerHTML=`<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--muted);font-style:italic;">Nog geen regels — klik "+ Regel toevoegen"</td></tr>`;
     return;
   }
-  tbody.innerHTML = huidigRegels.map((r,i)=>`
+  tbody.innerHTML = huidigRegels.map((r,i)=>{
+    // Bereken weergave stukprijs
+    const btwPct = r.btw || 0;
+    const isIncl = r.prijsIncl === true;
+    // Excl. prijs voor totaalkolom
+    const prijsExcl = isIncl ? (r.stukprijs / (1 + btwPct/100)) : (r.stukprijs || 0);
+    const totaalExcl = (r.aantal||0) * prijsExcl;
+    return `
     <tr>
       <td>
         <input type="text" value="${r.omschrijving||''}" list="producten-list"
@@ -893,15 +905,22 @@ function renderRegels(){
       </td>
       <td><input type="number" value="${r.stukprijs||0}" min="0" step="0.01"
         onchange="updateRegel(${i},'stukprijs',parseFloat(this.value)||0)"
-        style="text-align:right;"></td>
+        style="text-align:right;" title="${isIncl?'Prijs inclusief BTW':'Prijs exclusief BTW'}"></td>
+      <td>
+        <select onchange="updateRegel(${i},'prijsIncl',this.value==='incl')" title="Is de ingevulde prijs excl. of incl. BTW?">
+          <option value="excl" ${!isIncl?'selected':''}>Excl.</option>
+          <option value="incl" ${isIncl?'selected':''}>Incl.</option>
+        </select>
+      </td>
       <td>
         <select onchange="updateRegel(${i},'btw',parseInt(this.value))">
           ${[9,21,0].map(p=>`<option value="${p}" ${r.btw===p?'selected':''}>${p}%</option>`).join('')}
         </select>
       </td>
-      <td class="regel-totaal">${eurFmt((r.aantal||0)*(r.stukprijs||0))}</td>
+      <td class="regel-totaal">${eurFmt(totaalExcl)}</td>
       <td class="regel-del"><button class="del-btn" onclick="verwijderRegel(${i})">✕</button></td>
-    </tr>`).join('');
+    </tr>`;
+  }).join('');
 
   updateTotalen();
   updateMiniPreview();
@@ -930,9 +949,11 @@ function berekenTotalen(){
   const btwGroepen = {};
   let subtotaal = 0;
   huidigRegels.forEach(r=>{
-    const bedrag = (r.aantal||0)*(r.stukprijs||0);
-    subtotaal += bedrag;
     const pct = r.btw||0;
+    const isIncl = r.prijsIncl === true;
+    const prijsExcl = isIncl ? ((r.stukprijs||0)/(1+pct/100)) : (r.stukprijs||0);
+    const bedrag = (r.aantal||0) * prijsExcl;
+    subtotaal += bedrag;
     btwGroepen[pct] = (btwGroepen[pct]||0)+bedrag*(pct/100);
   });
   const btwBedrag = Object.values(btwGroepen).reduce((s,v)=>s+v,0);
@@ -1066,14 +1087,20 @@ function renderPreview(f){
   const inst = getInstellingen();
   const t = berekenTotalen_van(f.regels||[]);
 
-  const regelsHTML = (f.regels||[]).map(r=>`
+  const regelsHTML = (f.regels||[]).map(r=>{
+    const pct = r.btw||0;
+    const isIncl = r.prijsIncl === true;
+    const prijsExcl = isIncl ? ((r.stukprijs||0)/(1+pct/100)) : (r.stukprijs||0);
+    const totaalExcl = (r.aantal||0)*prijsExcl;
+    return `
     <tr>
       <td style="padding:10px 0;border-bottom:1px solid #F5F0E8;">${r.omschrijving||'–'}</td>
       <td style="padding:10px 0;border-bottom:1px solid #F5F0E8;text-align:center;">${r.aantal||0} ${r.eenheid||''}</td>
-      <td style="padding:10px 0;border-bottom:1px solid #F5F0E8;text-align:right;">${eurFmt(r.stukprijs||0)}</td>
-      <td style="padding:10px 0;border-bottom:1px solid #F5F0E8;text-align:center;">${r.btw||0}%</td>
-      <td style="padding:10px 0;border-bottom:1px solid #F5F0E8;text-align:right;font-family:'Syne',sans-serif;font-weight:700;">${eurFmt((r.aantal||0)*(r.stukprijs||0))}</td>
-    </tr>`).join('');
+      <td style="padding:10px 0;border-bottom:1px solid #F5F0E8;text-align:right;">${eurFmt(prijsExcl)}</td>
+      <td style="padding:10px 0;border-bottom:1px solid #F5F0E8;text-align:center;">${pct}%</td>
+      <td style="padding:10px 0;border-bottom:1px solid #F5F0E8;text-align:right;font-family:'Syne',sans-serif;font-weight:700;">${eurFmt(totaalExcl)}</td>
+    </tr>`;
+  }).join('');
 
   const btwRegels = Object.entries(t.btwGroepen).filter(([,v])=>v>0).map(([pct,v])=>`
     <tr>
@@ -1169,9 +1196,11 @@ function berekenTotalen_van(regels){
   const btwGroepen = {};
   let subtotaal = 0;
   (regels||[]).forEach(r=>{
-    const bedrag=(r.aantal||0)*(r.stukprijs||0);
-    subtotaal+=bedrag;
     const pct=r.btw||0;
+    const isIncl = r.prijsIncl === true;
+    const prijsExcl = isIncl ? ((r.stukprijs||0)/(1+pct/100)) : (r.stukprijs||0);
+    const bedrag=(r.aantal||0)*prijsExcl;
+    subtotaal+=bedrag;
     btwGroepen[pct]=(btwGroepen[pct]||0)+bedrag*(pct/100);
   });
   const btwBedrag=Object.values(btwGroepen).reduce((s,v)=>s+v,0);
@@ -1197,6 +1226,88 @@ function laadInstellingen(){
   document.getElementById('s-bank').value=inst.bank||'';
   document.getElementById('s-website').value=inst.website;
   document.getElementById('s-prefix').value=inst.prefix||'EH';
+}
+
+// ══════════════════════════════════════════════════════════════
+// BACKUP SYSTEEM — exporteer en importeer alle facturen
+// ══════════════════════════════════════════════════════════════
+function exporteerBackup(){
+  if(!facturen.length){
+    toast('⚠️ Geen facturen om te exporteren');
+    return;
+  }
+  const inst = getInstellingen();
+  const backup = {
+    versie: '1.0',
+    aangemaakt: new Date().toISOString(),
+    bedrijf: inst.naam || 'Eat Hybrids',
+    aantalFacturen: facturen.length,
+    facturen: facturen,
+    instellingen: inst
+  };
+  const json = JSON.stringify(backup, null, 2);
+  const blob = new Blob([json], {type: 'application/json'});
+  const url = URL.createObjectURL(blob);
+  const datum = new Date().toISOString().slice(0,10);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'EatHybrids_Backup_' + datum + '.json';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  toast('✓ Backup gedownload — ' + facturen.length + ' facturen opgeslagen');
+}
+
+function importeerBackup(input){
+  const bestand = input.files[0];
+  if(!bestand) return;
+  const reader = new FileReader();
+  reader.onload = function(e){
+    try{
+      const data = JSON.parse(e.target.result);
+      // Valideer het bestand
+      if(!data.facturen || !Array.isArray(data.facturen)){
+        toast('⚠️ Ongeldig backup bestand — geen facturen gevonden');
+        input.value = '';
+        return;
+      }
+      const aantal = data.facturen.length;
+      const bevestiging = confirm(
+        '📂 Backup gevonden: ' + aantal + ' facturen\n' +
+        'Aangemaakt: ' + (data.aangemaakt ? new Date(data.aangemaakt).toLocaleDateString('nl-NL') : 'onbekend') + '\n\n' +
+        '⚠️ Bestaande facturen worden SAMENGEVOEGD met de backup.\n' +
+        'Doorgaan?'
+      );
+      if(!bevestiging){
+        input.value = '';
+        return;
+      }
+      // Samenvoegen: nieuwe facturen toevoegen, bestaande bijwerken
+      let nieuw = 0, bijgewerkt = 0;
+      data.facturen.forEach(function(importFactuur){
+        if(!importFactuur.id) return;
+        const bestaandIdx = facturen.findIndex(function(f){ return f.id === importFactuur.id; });
+        if(bestaandIdx >= 0){
+          facturen[bestaandIdx] = importFactuur;
+          bijgewerkt++;
+        } else {
+          facturen.push(importFactuur);
+          nieuw++;
+        }
+      });
+      // Sla lokaal op
+      try{ localStorage.setItem('eh_facturen_backup', JSON.stringify(facturen)); }catch{}
+      // Sync naar Google Sheets
+      facturen.forEach(function(f){ syncFactuurNaarSheets(f); });
+      renderOverzicht();
+      toast('✓ Backup hersteld — ' + nieuw + ' nieuw, ' + bijgewerkt + ' bijgewerkt');
+    } catch(err){
+      toast('⚠️ Fout bij inladen backup: ' + err.message);
+    }
+    input.value = '';
+  };
+  reader.readAsText(bestand);
 }
 
 function slaInstellingenOp(){
@@ -1321,7 +1432,7 @@ function checkLogin(){
 document.getElementById('topbar-date').textContent = new Date().toLocaleDateString('nl-NL',{day:'numeric',month:'long',year:'numeric'});
 // Controleer login eerst
 if(checkLogin()){ laadFacturenVanSheets(); }
-</script><datalist id="producten-list"><option value="Hybride Hamburger Classic"></option><option value="Hybride Hamburger Spicy"></option><option value="Hybride Meatball"></option><option value="Hybride MincedMeat"></option><option value="Verpakkingsmateriaal"></option><option value="Levering"></option><option value="Overig"></option></datalist><datalist id="producten-list"><option value="Hybride Hamburger Classic"></option><option value="Hybride Hamburger Spicy"></option><option value="Hybride Meatball"></option><option value="Hybride MincedMeat"></option><option value="Verpakkingsmateriaal"></option><option value="Levering"></option><option value="Overig"></option></datalist><datalist id="producten-list"><option value="Hybride Hamburger Classic"></option><option value="Hybride Hamburger Spicy"></option><option value="Hybride Meatball"></option><option value="Hybride MincedMeat"></option><option value="Verpakkingsmateriaal"></option><option value="Levering"></option><option value="Overig"></option></datalist><datalist id="producten-list"><option value="Hybride Hamburger Classic"></option><option value="Hybride Hamburger Spicy"></option><option value="Hybride Meatball"></option><option value="Hybride MincedMeat"></option><option value="Verpakkingsmateriaal"></option><option value="Levering"></option><option value="Overig"></option></datalist>
+</script><datalist id="producten-list"><option value="Hybride Hamburger Classic"></option><option value="Hybride Hamburger Spicy"></option><option value="Hybride Meatball"></option><option value="Hybride MincedMeat"></option><option value="Verpakkingsmateriaal"></option><option value="Levering"></option><option value="Overig"></option></datalist><datalist id="producten-list"><option value="Hybride Hamburger Classic"></option><option value="Hybride Hamburger Spicy"></option><option value="Hybride Meatball"></option><option value="Hybride MincedMeat"></option><option value="Verpakkingsmateriaal"></option><option value="Levering"></option><option value="Overig"></option></datalist><datalist id="producten-list"><option value="Hybride Hamburger Classic"></option><option value="Hybride Hamburger Spicy"></option><option value="Hybride Meatball"></option><option value="Hybride MincedMeat"></option><option value="Verpakkingsmateriaal"></option><option value="Levering"></option><option value="Overig"></option></datalist><datalist id="producten-list"><option value="Hybride Hamburger Classic"></option><option value="Hybride Hamburger Spicy"></option><option value="Hybride Meatball"></option><option value="Hybride MincedMeat"></option><option value="Verpakkingsmateriaal"></option><option value="Levering"></option><option value="Overig"></option></datalist><datalist id="producten-list"><option value="Hybride Hamburger Classic"></option><option value="Hybride Hamburger Spicy"></option><option value="Hybride Meatball"></option><option value="Hybride MincedMeat"></option><option value="Verpakkingsmateriaal"></option><option value="Levering"></option><option value="Overig"></option></datalist>
 
 
 </body></html>
