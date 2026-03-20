@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<!-- saved from url=(0045)file:///C:/Users/Admin/Downloads/index_2.html -->
+<!-- saved from url=(0045)file:///C:/Users/Admin/Downloads/index_4.html -->
 <html lang="nl"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Eat Hybrids — Facturatie</title>
-<link href="file:///C:/Users/Admin/Desktop/eat-hybrids-facturen/Eat%20Hybrids%20%E2%80%94%20Facturatie_files/css2" rel="stylesheet">
+<link href="./index_files/css2" rel="stylesheet">
 <style>
 :root {
   --green:#2D5016;--green-mid:#4A7C2F;--green-light:#7AB648;
@@ -233,7 +233,7 @@ tbody tr:last-child td{border-bottom:none;}
   <div class="topbar">
     <div class="topbar-title" id="page-title">Factuuroverzicht</div>
     <div class="topbar-right">
-      <div style="font-size:12px;color:var(--muted);background:var(--cream);padding:5px 12px;border-radius:20px;border:1px solid var(--warm);" id="topbar-date">19 maart 2026</div>
+      <div style="font-size:12px;color:var(--muted);background:var(--cream);padding:5px 12px;border-radius:20px;border:1px solid var(--warm);" id="topbar-date">20 maart 2026</div>
       <span id="sync-status" style="font-size:12px;font-family:&#39;Syne&#39;,sans-serif;font-weight:600;display:none;padding:5px 12px;background:var(--cream);border-radius:20px;border:1px solid var(--warm);"></span>
       <button class="btn btn-secondary btn-sm" onclick="laadFacturenVanSheets()" title="Ververs vanuit Google Sheets">⟳ Ververs</button>
       <span id="sync-status" style="font-size:12px;font-family:&#39;Syne&#39;,sans-serif;font-weight:600;display:none;padding:5px 12px;background:var(--cream);border-radius:20px;border:1px solid var(--warm);"></span>
@@ -498,9 +498,11 @@ tbody tr:last-child td{border-bottom:none;}
 <div id="toast"></div>
 
 <script>
-var SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxMKKQ-E4WXUJYlCkiB8WgzTyaTWyeLe-rXgDPVMMELrXBlkItJjAzDaRj9oWoygY27/exec";
-// ══════════════════════════════════════════════════════════════
 
+// ══════════════════════════════════════════════════════════════
+// GOOGLE SHEETS SYNC
+// ══════════════════════════════════════════════════════════════
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxF1Zi28LR0uxdr5tMVIImkSZIUXMjpC115Rl9uLJwQ_qNVvt5Budn1WriJyHwEp7v2og/exec';
 
 function toonSyncStatus(msg, kleur='var(--amber)'){
   const el = document.getElementById('sync-status');
@@ -560,33 +562,26 @@ function syncFactuurNaarSheets(factuur){
   toonSyncStatus('⟳ Opslaan in Google Sheets...', 'var(--amber)');
 
   // Stuur data via URL parameter (GET) — werkt altijd vanuit lokale bestanden
-// Gebruik onze nieuwe backup motor
-backupNaarSheets(factuur);
-    
-    // Optioneel: toon direct dat het lokaal alvast is gelukt
-    toonSyncStatus('✓ Lokaal opgeslagen - backup gestart', 'var(--green-mid)');
-    setTimeout(() => { 
-        const el = document.getElementById('sync-status');
-        if(el) el.style.display = 'none'; 
-    }, 3000);
+  const encoded = encodeURIComponent(JSON.stringify({action:'save', factuur}));
+  jsonpRequest(SCRIPT_URL + '?data=' + encoded, function(err, data){
+    if(err || !data){
+      toonSyncStatus('⚠ Lokaal opgeslagen — sync mislukt', 'var(--amber)');
+      return;
+    }
+    if(data.ok){
+      toonSyncStatus('✓ Opgeslagen in Google Sheets', 'var(--green-mid)');
+      setTimeout(()=>{ const el=document.getElementById('sync-status'); if(el) el.style.display='none'; }, 3000);
+    }
+  });
 }
+
 function verwijderUitSheets(id){
-    // 1. Verwijder eerst lokaal uit de browser backup
-    try {
-        const backup = JSON.parse(localStorage.getItem('eh_facturen_backup')||'[]');
-        localStorage.setItem('eh_facturen_backup', JSON.stringify(backup.filter(f=>f.id!==id)));
-    } catch(e) {}
-
-    // 2. Geef opdracht aan de backup motor om de rij in Google Sheets te wissen
-    const payload = { action: 'delete', id: id };
-    const script = document.createElement('script');
-    script.src = `${SCRIPT_URL}?callback=backupSucces&data=${encodeURIComponent(JSON.stringify(payload))}`;
-    document.body.appendChild(script);
-
-    console.log("Opdracht verstuurd om factuur " + id + " te verwijderen uit Sheets.");
-    
-    // UI direct bijwerken zodat de factuur uit de lijst verdwijnt
-    if(typeof renderOverzicht === 'function') renderOverzicht();
+  try{
+    const backup = JSON.parse(localStorage.getItem('eh_facturen_backup')||'[]');
+    localStorage.setItem('eh_facturen_backup', JSON.stringify(backup.filter(f=>f.id!==id)));
+  }catch{}
+  const encoded = encodeURIComponent(JSON.stringify({action:'delete', id}));
+  jsonpRequest(SCRIPT_URL + '?data=' + encoded, function(){});
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -836,7 +831,7 @@ function opslaanFactuur(verzenden){
   }
 
   // Sync naar Google Sheets
-  backupNaarSheets(factuur);
+  syncFactuurNaarSheets(factuur);
   setStatusUI(status);
   renderOverzicht();
   if(verzenden) toast('✓ Factuur opgeslagen als Verzonden — '+ factuur.nummer);
@@ -850,7 +845,7 @@ function verwijderFactuur(id){
   if(!f) return;
   if(!confirm('Weet je zeker dat je factuur '+f.nummer+' wilt verwijderen?')) return;
   facturen = facturen.filter(x=>x.id!==id);
-  verwijderFactuurUitSheets(id);
+  verwijderUitSheets(id);
   toast('🗑️ Factuur verwijderd');
   renderOverzicht();
 }
@@ -1325,38 +1320,8 @@ function checkLogin(){
 
 document.getElementById('topbar-date').textContent = new Date().toLocaleDateString('nl-NL',{day:'numeric',month:'long',year:'numeric'});
 // Controleer login eerst
-if(checkLogin()){ 
-    setTimeout(() => {
-        laadFacturenVanSheets(); 
-    }, 500); 
-}
-// --- NIEUWE CODE VANAF REGEL 1324 ---
-
-
-function backupNaarSheets(factuurData) {
-    console.log("Factuur wordt naar Google Sheets verzonden...");
-    
-    // We maken de data klaar voor verzending
-    const payload = {
-        action: 'save',
-        factuur: factuurData
-    };
-
-    // Gebruik JSONP om de backup te maken (voorkomt beveiligingsfouten in de browser)
-    const script = document.createElement('script');
-    script.src = `${SCRIPT_URL}?callback=backupSucces&data=${encodeURIComponent(JSON.stringify(payload))}`;
-    document.body.appendChild(script);
-}
-
-function backupSucces(response) {
-    if (response.ok) {
-        console.log("✅ Backup geslaagd!");
-    } else {
-        console.error("❌ Backup mislukt: ", response.error);
-    }
-}
-// --- EINDE NIEUWE CODE ---
-</script><datalist id="producten-list"><option value="Hybride Hamburger Classic"></option><option value="Hybride Hamburger Spicy"></option><option value="Hybride Meatball"></option><option value="Hybride MincedMeat"></option><option value="Verpakkingsmateriaal"></option><option value="Levering"></option><option value="Overig"></option></datalist><datalist id="producten-list"><option value="Hybride Hamburger Classic"></option><option value="Hybride Hamburger Spicy"></option><option value="Hybride Meatball"></option><option value="Hybride MincedMeat"></option><option value="Verpakkingsmateriaal"></option><option value="Levering"></option><option value="Overig"></option></datalist><datalist id="producten-list"><option value="Hybride Hamburger Classic"></option><option value="Hybride Hamburger Spicy"></option><option value="Hybride Meatball"></option><option value="Hybride MincedMeat"></option><option value="Verpakkingsmateriaal"></option><option value="Levering"></option><option value="Overig"></option></datalist>
+if(checkLogin()){ laadFacturenVanSheets(); }
+</script><datalist id="producten-list"><option value="Hybride Hamburger Classic"></option><option value="Hybride Hamburger Spicy"></option><option value="Hybride Meatball"></option><option value="Hybride MincedMeat"></option><option value="Verpakkingsmateriaal"></option><option value="Levering"></option><option value="Overig"></option></datalist><datalist id="producten-list"><option value="Hybride Hamburger Classic"></option><option value="Hybride Hamburger Spicy"></option><option value="Hybride Meatball"></option><option value="Hybride MincedMeat"></option><option value="Verpakkingsmateriaal"></option><option value="Levering"></option><option value="Overig"></option></datalist><datalist id="producten-list"><option value="Hybride Hamburger Classic"></option><option value="Hybride Hamburger Spicy"></option><option value="Hybride Meatball"></option><option value="Hybride MincedMeat"></option><option value="Verpakkingsmateriaal"></option><option value="Levering"></option><option value="Overig"></option></datalist><datalist id="producten-list"><option value="Hybride Hamburger Classic"></option><option value="Hybride Hamburger Spicy"></option><option value="Hybride Meatball"></option><option value="Hybride MincedMeat"></option><option value="Verpakkingsmateriaal"></option><option value="Levering"></option><option value="Overig"></option></datalist>
 
 
 </body></html>
